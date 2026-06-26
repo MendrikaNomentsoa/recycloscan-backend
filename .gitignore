@@ -1,0 +1,59 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# ========================
+# Spring Boot
+# ========================
+# Ne jamais commit les fichiers avec les mots de passe et clés API !
+application-prod.properties
+application-local.properties
+
+# ========================
+# Système
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Spring Boot - SECRETS
+# ========================
+# Ne jamais commit les vraies clés API et mots de passe !
+src/main/resources/application.properties
+
+# ========================
+# Java / Maven
+# ========================
+*.class
+*.jar
+*.war
