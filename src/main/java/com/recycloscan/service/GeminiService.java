@@ -29,6 +29,10 @@ public class GeminiService {
             // Construire l'URL avec la clé API
             String url = apiUrl + "?key=" + apiKey;
 
+            // Log pour vérifier l'URL et la taille de l'image
+            System.out.println("=== GEMINI URL : " + url);
+            System.out.println("=== IMAGE SIZE : " + base64Image.length());
+
             // Construire le body de la requête Gemini
             Map<String, Object> requestBody = buildRequestBody(base64Image);
 
@@ -41,11 +45,21 @@ public class GeminiService {
             // Appeler l'API Gemini
             ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
 
+            // Log pour voir la réponse brute de Gemini
+            System.out.println("=== GEMINI RESPONSE : " + response.getBody());
+
             // Extraire le texte de la réponse
-            return extractTextFromResponse(response.getBody());
+            String label = extractTextFromResponse(response.getBody());
+
+            // Log pour voir le label extrait
+            System.out.println("=== GEMINI LABEL : " + label);
+
+            return label;
 
         } catch (Exception e) {
-            // Si Gemini échoue, on retourne null
+            // Log pour voir l'erreur exacte si Gemini échoue
+            System.out.println("=== GEMINI ERROR : " + e.getMessage());
+            e.printStackTrace();
             // Le ScanService gérera ce cas avec une recherche manuelle
             return null;
         }
@@ -91,8 +105,14 @@ public class GeminiService {
             Map firstCandidate = candidates.get(0);
             Map content = (Map) firstCandidate.get("content");
             List<Map> parts = (List<Map>) content.get("parts");
-            return parts.get(0).get("text").toString().trim().toLowerCase();
+
+            // Log pour voir ce qu'on extrait
+            String text = parts.get(0).get("text").toString().trim().toLowerCase();
+            System.out.println("=== EXTRACTED TEXT : " + text);
+
+            return text;
         } catch (Exception e) {
+            System.out.println("=== EXTRACT ERROR : " + e.getMessage());
             return null;
         }
     }
