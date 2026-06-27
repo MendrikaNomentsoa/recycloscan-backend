@@ -6,6 +6,7 @@ import com.recycloscan.entity.User;
 import com.recycloscan.entity.WasteItem;
 import com.recycloscan.repository.ScanHistoryRepository;
 import com.recycloscan.repository.UserRepository;
+import com.recycloscan.repository.WasteItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class ScanService {
     private final WasteService wasteService;
     private final UserRepository userRepository;
     private final ScanHistoryRepository scanHistoryRepository;
+    private final WasteItemRepository wasteItemRepository; // ← ajouté
 
     // ========================
     // Scan via photo (base64)
@@ -35,7 +37,7 @@ public class ScanService {
             wasteItem = wasteService.findByGeminiLabel(geminiLabel);
         }
 
-        // 3. Si Gemini n'a pas trouvé → déchet inconnu
+        // 3. Si Gemini n'a pas trouvé → déchet inconnu sauvegardé en base
         if (wasteItem == null) {
             wasteItem = getDefaultWasteItem();
         }
@@ -99,16 +101,30 @@ public class ScanService {
     }
 
     // ========================
-    // Déchet par défaut si rien trouvé
+    // Déchet par défaut sauvegardé en base
     // ========================
     private WasteItem getDefaultWasteItem() {
+
+        // Vérifier s'il existe déjà en base pour éviter les doublons
+        List<WasteItem> existing = wasteItemRepository
+                .searchByNameOrKeyword("non identifié");
+
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+
+        // Créer et sauvegarder en base
         WasteItem unknown = new WasteItem();
         unknown.setName("Déchet non identifié");
         unknown.setCategory(WasteItem.Category.AUTRE);
         unknown.setBinColor(WasteItem.BinColor.GRISE);
-        unknown.setInstruction("Déposez ce déchet dans la poubelle grise (ordures ménagères)");
-        unknown.setPointsValue(5); // points réduits pour déchet non identifié
-        return unknown;
+        unknown.setGeminiKeywords("inconnu,non identifié,autre");
+        unknown.setInstruction(
+                "Déposez ce déchet dans la poubelle grise (ordures ménagères)"
+        );
+        unknown.setPointsValue(5);
+
+        return wasteItemRepository.save(unknown);
     }
 
     // ========================
