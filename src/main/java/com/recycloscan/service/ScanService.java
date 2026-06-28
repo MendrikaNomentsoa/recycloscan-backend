@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -21,33 +22,50 @@ public class ScanService {
     private final WasteService wasteService;
     private final UserRepository userRepository;
     private final ScanHistoryRepository scanHistoryRepository;
-    private final WasteItemRepository wasteItemRepository; // ← ajouté
+    private final WasteItemRepository wasteItemRepository;
 
     // ========================
     // Scan via photo (base64)
+    // Envoie l'image à Gemini qui retourne une analyse complète
     // ========================
     public ScanResponseDto scanByPhoto(String base64Image) {
 
-        // 1. Envoyer l'image à Gemini pour identification
-        String geminiLabel = geminiService.analyzeImage(base64Image);
+        // 1. Envoyer l'image à Gemini — retourne maintenant un Map complet
+        Map<String, Object> geminiData = geminiService.analyzeImage(base64Image);
 
-        // 2. Chercher le déchet correspondant dans la base
+        // 2. Extraire les infos depuis la réponse Gemini
+        String geminiLabel = null;
+        String explication = null;
+        String materiau = null;
+        String astuce = null;
+        Boolean recyclable = null;
+
+        if (geminiData != null) {
+            geminiLabel = (String) geminiData.get("nom");
+            explication = (String) geminiData.get("explication");
+            materiau = (String) geminiData.get("materiau");
+            astuce = (String) geminiData.get("astuce");
+            recyclable = (Boolean) geminiData.get("recyclable");
+        }
+
+        // 3. Chercher le déchet correspondant dans la base
         WasteItem wasteItem = null;
         if (geminiLabel != null) {
             wasteItem = wasteService.findByGeminiLabel(geminiLabel);
         }
 
-        // 3. Si Gemini n'a pas trouvé → déchet inconnu sauvegardé en base
+        // 4. Si non trouvé → déchet par défaut sauvegardé en base
         if (wasteItem == null) {
             wasteItem = getDefaultWasteItem();
         }
 
-        // 4. Créditer les points et enregistrer le scan
-        return processScan(wasteItem, geminiLabel);
+        // 5. Créditer les points et enregistrer le scan
+        return processScan(wasteItem, geminiLabel, explication, materiau, astuce, recyclable);
     }
 
     // ========================
     // Scan manuel via texte
+    // Pas d'appel Gemini — recherche directe en base
     // ========================
     public ScanResponseDto scanByText(String keyword) {
 
@@ -58,13 +76,19 @@ public class ScanService {
                 ? getDefaultWasteItem()
                 : results.get(0);
 
-        return processScan(wasteItem, keyword);
+        // Pas de données Gemini pour le scan manuel — on passe null
+        return processScan(wasteItem, keyword, null, null, null, null);
     }
 
     // ========================
-    // Logique commune : créditer points + enregistrer
+    // Logique commune : créditer points + enregistrer dans l'historique
     // ========================
-    private ScanResponseDto processScan(WasteItem wasteItem, String geminiLabel) {
+    private ScanResponseDto processScan(WasteItem wasteItem,
+                                        String geminiLabel,
+                                        String explication,
+                                        String materiau,
+                                        String astuce,
+                                        Boolean recyclable) {
 
         // Récupérer l'utilisateur connecté depuis le token JWT
         String email = SecurityContextHolder.getContext()
@@ -87,21 +111,29 @@ public class ScanService {
         history.setPointsEarned(pointsEarned);
         scanHistoryRepository.save(history);
 
-        // Construire la réponse
-        return new ScanResponseDto(
-                wasteItem.getName(),
-                wasteItem.getCategory().name(),
-                wasteItem.getBinColor().name(),
-                wasteItem.getInstruction(),
-                geminiLabel,
-                pointsEarned,
-                user.getTotalPoints(),
-                "Bien joué ! +" + pointsEarned + " points"
-        );
+        // Construire la réponse avec tous les champs éducatifs
+        ScanResponseDto dto = new ScanResponseDto();
+        dto.setWasteName(wasteItem.getName());
+        dto.setCategory(wasteItem.getCategory().name());
+        dto.setBinColor(wasteItem.getBinColor().name());
+        dto.setInstruction(wasteItem.getInstruction());
+        dto.setGeminiLabel(geminiLabel);
+        dto.setPointsEarned(pointsEarned);
+        dto.setTotalPoints(user.getTotalPoints());
+        dto.setMessage("Bien joué ! +" + pointsEarned + " points");
+
+        // Champs éducatifs — peuvent être null si scan manuel
+        dto.setMateriau(materiau);
+        dto.setExplication(explication);
+        dto.setAstuce(astuce);
+        dto.setRecyclable(recyclable);
+
+        return dto;
     }
 
     // ========================
     // Déchet par défaut sauvegardé en base
+    // Utilisé quand Gemini ne reconnaît pas le déchet
     // ========================
     private WasteItem getDefaultWasteItem() {
 
