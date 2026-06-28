@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/waste").permitAll()
                         .requestMatchers("/api/waste/search").permitAll()
                         .requestMatchers("/api/users/leaderboard").permitAll()
+                        .requestMatchers("/api/stats/me").authenticated()
                         // Toutes les autres routes nécessitent un token valide
                         .anyRequest().authenticated()
                 )
