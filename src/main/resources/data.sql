@@ -1,10 +1,9 @@
 -- ================================================
 -- Données initiales — WasteItems
 -- Ce fichier est exécuté automatiquement au démarrage
+-- UNIQUEMENT si spring.sql.init.mode=always
+-- Pas de TRUNCATE pour ne jamais perdre les scans utilisateurs
 -- ================================================
-
--- Vider la table avant d'insérer pour éviter les doublons
-TRUNCATE TABLE waste_items RESTART IDENTITY CASCADE;
 
 -- ================================================
 -- PLASTIQUE → Poubelle JAUNE
